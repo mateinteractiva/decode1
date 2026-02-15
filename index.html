@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistical Decoder</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            font-size: 18px;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f5f5dc;
+            color: #2c3e50;
+        }
+        
+        h1 {
+            color: #8b0000;
+            text-align: center;
+            border-bottom: 3px solid #8b0000;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #00008b;
+            margin-top: 30px;
+        }
+        
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #00008b;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #00008b;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .output-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 2px solid #8b0000;
+            border-radius: 4px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .decoded-output {
+            font-family: 'Georgia', serif;
+            font-size: 20px;
+            color: #8b0000;
+            word-wrap: break-word;
+            line-height: 1.8;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: #00008b;
+            color: white;
+            padding: 12px 25px;
+            font-size: 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #000066;
+        }
+        
+        button:active {
+            background-color: #000050;
+        }
+        
+        .mapping-display {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #e8f4f8;
+            border-left: 4px solid #00008b;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .mapping-item {
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+        }
+        
+        .char-label {
+            color: #8b0000;
+            font-weight: bold;
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #8b0000;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Statistical Decoder</h1>
+    
+    <div class="container">
+        <label for="inputCode">Enter the code (numbers separated by spaces):</label>
+        <textarea id="inputCode" placeholder="ex: 45 12 234 56 789 23..."></textarea>
+        
+        <div class="button-group">
+            <button onclick="decodeText()">Decode</button>
+            <button onclick="clearAll()">Clear All</button>
+        </div>
+        
+        <div class="output-box">
+            <label>Decoded Text:</label>
+            <div class="decoded-output" id="output">The decoded text will appear here ...</div>
+        </div>
+        
+        <div class="mapping-display" id="mappingDisplay"></div>
+        
+        <div class="info">
+            <strong>Information:</strong> The app encodes only lowercase, commas, spaces, and periods.
+        </div>
+    </div>
+
+    <script>
+        // Maparea identică cu cea din encoder
+        const encodeMap = {};
+        const decodeMap = {};
+        
+        function generateMapping() {
+            const characters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',' ','.'];
+            const frequencies = [11.0,1.5,3.5,3.0,9.0,1.0,1.5,1.0,9.0,0.5,0.3,4.5,3.0,6.0,6.5,3.5,0.2,6.5,5.0,6.0,5.5,2.0,0.2,0.3,0.2,0.8,15.0,2.5];
+            
+            let currentNumber = 1;
+            
+            for (let i = 0; i < characters.length; i++) {
+                const ch = characters[i];
+                const freq = frequencies[i];
+                const numCount = Math.max(1, Math.floor(freq * 5));
+                
+                encodeMap[ch] = [];
+                
+                for (let j = 0; j < numCount; j++) {
+                    encodeMap[ch].push(currentNumber);
+                    decodeMap[currentNumber] = ch;
+                    currentNumber++;
+                }
+            }
+        }
+        
+        function decodeText() {
+            const input = document.getElementById('inputCode').value.trim();
+            const output = document.getElementById('output');
+            
+            if (input === '') {
+                output.textContent = 'Introduceți numere separate prin spațiu pentru decodificare...';
+                output.style.color = '#666';
+                return;
+            }
+            
+            // Extragem toate numerele din input
+            const numbers = input.split(/\s+/).map(n => parseInt(n)).filter(n => !isNaN(n));
+            
+            if (numbers.length === 0) {
+                output.textContent = 'EROARE: Nu s-au găsit numere valide!';
+                output.style.color = 'red';
+                return;
+            }
+            
+            let decoded = '';
+            let unknownCount = 0;
+            
+            for (let i = 0; i < numbers.length; i++) {
+                const num = numbers[i];
+                if (decodeMap[num]) {
+                    decoded += decodeMap[num];
+                } else {
+                    decoded += '?';
+                    unknownCount++;
+                }
+            }
+            
+            output.textContent = decoded;
+            output.style.color = '#8b0000';
+            
+            if (unknownCount > 0) {
+                output.innerHTML = decoded + '<br><span style="color: orange; font-size: 14px;">(Avertisment: ' + unknownCount + ' numere necunoscute marchate cu "?")</span>';
+            }
+        }
+        
+        function toggleMapping() {
+            const mappingDisplay = document.getElementById('mappingDisplay');
+            
+            if (mappingDisplay.style.display === 'none' || mappingDisplay.style.display === '') {
+                displayMapping();
+                mappingDisplay.style.display = 'block';
+            } else {
+                mappingDisplay.style.display = 'none';
+            }
+        }
+        
+        function displayMapping() {
+            const mappingDisplay = document.getElementById('mappingDisplay');
+            let html = '<h3 style="color: #00008b;">Mapare Numere → Caractere</h3>';
+            
+            // Afișăm maparea în ordine numerică
+            const sortedNumbers = Object.keys(decodeMap).map(n => parseInt(n)).sort((a, b) => a - b);
+            
+            let currentChar = '';
+            let charNumbers = [];
+            
+            for (let i = 0; i < sortedNumbers.length; i++) {
+                const num = sortedNumbers[i];
+                const ch = decodeMap[num];
+                
+                if (ch !== currentChar) {
+                    if (currentChar !== '') {
+                        html += formatMappingItem(currentChar, charNumbers);
+                    }
+                    currentChar = ch;
+                    charNumbers = [num];
+                } else {
+                    charNumbers.push(num);
+                }
+            }
+            
+            if (currentChar !== '') {
+                html += formatMappingItem(currentChar, charNumbers);
+            }
+            
+            html += '<p style="margin-top: 20px; color: #00008b; font-weight: bold;">';
+            html += 'Total caractere: ' + Object.keys(encodeMap).length + '<br>';
+            html += 'Total numere în dicționar: ' + Object.keys(decodeMap).length;
+            html += '</p>';
+            
+            mappingDisplay.innerHTML = html;
+        }
+        
+        function formatMappingItem(ch, numbers) {
+            let charLabel = ch;
+            if (ch === ' ') charLabel = 'SPAȚIU';
+            if (ch === '.') charLabel = 'PUNCT';
+            
+            let html = '<div class="mapping-item">';
+            html += '<span class="char-label">\'' + charLabel + '\'</span> ← ';
+            html += numbers.join(', ');
+            html += ' <span style="color: #666;">(' + numbers.length + ' numere)</span>';
+            html += '</div>';
+            
+            return html;
+        }
+        
+        function clearAll() {
+            document.getElementById('inputCode').value = '';
+            document.getElementById('output').textContent = 'Textul decodificat va apărea aici...';
+            document.getElementById('output').style.color = '#666';
+        }
+        
+        // Inițializare la încărcarea paginii
+        generateMapping();
+        
+        // Decodificare automată la introducerea textului
+        document.getElementById('inputCode').addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                decodeText();
+            }
+        });
+    </script>
+</body>
+</html>
